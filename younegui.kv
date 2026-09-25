@@ -1,0 +1,714 @@
+#:kivy 2.3.0
+#:import NoTransition kivy.uix.screenmanager.NoTransition
+
+# ---------------------------------------------------------------- briques de base
+
+<TapArea@ButtonBehavior+Widget>
+
+<IconLabel@Label>:
+    font_name: "Icons"
+    font_size: sp(24)
+    color: app.c_text
+
+<IconButton@ButtonBehavior+Label>:
+    font_name: "Icons"
+    font_size: sp(24)
+    color: app.c_text
+    size_hint: None, None
+    size: dp(44), dp(44)
+    opacity: 0.6 if self.state == "down" else 1
+
+# Bouton rond posé sur la vidéo
+<OverlayButton@IconButton>:
+    bg_color: 0, 0, 0, .3
+    font_size: sp(28)
+    size: dp(48), dp(48)
+    canvas.before:
+        Color:
+            rgba: self.bg_color or (0, 0, 0, 0)
+        Ellipse:
+            pos: self.x + dp(2), self.y + dp(2)
+            size: self.width - dp(4), self.height - dp(4)
+
+<Pill@ButtonBehavior+Label>:
+    bg_color: app.c_surface2
+    font_size: sp(13)
+    size_hint: None, None
+    size: self.texture_size[0] + dp(24), dp(32)
+    color: app.c_text
+    canvas.before:
+        Color:
+            rgba: ((0, 0, 0, 0) if not self.bg_color else (self.bg_color[0], self.bg_color[1], self.bg_color[2], .7) if self.state == "down" else self.bg_color)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [self.height / 2]
+
+# Interrupteur marche / arrêt
+<Toggle@ButtonBehavior+Widget>:
+    active: False
+    size_hint: None, None
+    size: dp(48), dp(28)
+    canvas:
+        Color:
+            rgba: app.c_accent if self.active else app.c_surface2
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [self.height / 2]
+        Color:
+            rgba: 1, 1, 1, 1
+        Ellipse:
+            pos: (self.right - self.height + dp(3) if self.active else self.x + dp(3)), self.y + dp(3)
+            size: self.height - dp(6), self.height - dp(6)
+
+<ResChip@Pill>:
+    value: 0
+    text: "%dp" % self.value
+    font_size: sp(14)
+    size: dp(76), dp(38)
+    bg_color: app.c_accent if app.resolution == self.value else app.c_surface2
+    on_release: app.set_resolution(self.value)
+
+<PanelHeader@BoxLayout>:
+    title: ""
+    size_hint_y: None
+    height: dp(52)
+    padding: dp(4), 0, dp(12), 0
+    spacing: dp(4)
+    IconButton:
+        text: app.glyph("arrow-left")
+        pos_hint: {"center_y": .5}
+        on_release: app.show_panel("favorites" if app.panel == "channel" else "results")
+    Label:
+        text: root.title
+        bold: True
+        font_size: sp(18)
+        color: app.c_text
+        text_size: self.size
+        halign: "left"
+        valign: "middle"
+        shorten: True
+
+<BottomItem@ButtonBehavior+BoxLayout>:
+    icon: ""
+    label: ""
+    active: False
+    orientation: "vertical"
+    padding: 0, dp(6)
+    opacity: 0.6 if self.state == "down" else 1
+    IconLabel:
+        text: root.icon
+        color: app.c_accent if root.active else app.c_text
+    Label:
+        text: root.label
+        font_size: sp(11)
+        size_hint_y: None
+        height: dp(16)
+        color: app.c_accent if root.active else app.c_muted
+
+<List@RecycleView>:
+    bar_width: dp(3)
+    bar_color: app.c_muted
+    scroll_type: ["bars", "content"]
+    RecycleBoxLayout:
+        default_size: None, dp(72)
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: "vertical"
+
+<EmptyLabel@Label>:
+    color: app.c_muted
+    font_size: sp(14)
+    text_size: self.width - dp(48), None
+    halign: "center"
+
+# ---------------------------------------------------------------- lignes des listes
+
+<VideoRow>:
+    size_hint_y: None
+    height: dp(72)
+    padding: dp(12), dp(6), dp(4), dp(6)
+    spacing: dp(12)
+    canvas.before:
+        Color:
+            rgba: app.c_surface2 if self.state == "down" else ((1, 1, 1, .05) if self.current else (0, 0, 0, 0))
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    AsyncImage:
+        source: root.thumb
+        size_hint_x: None
+        width: dp(107)
+        fit_mode: "cover"
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: root.title
+            font_size: sp(14)
+            color: app.c_accent if root.current else app.c_text
+            text_size: self.size
+            halign: "left"
+            valign: "top"
+            max_lines: 2
+        Label:
+            text: root.subtitle
+            font_size: sp(12)
+            color: app.c_muted
+            size_hint_y: None
+            height: dp(18)
+            text_size: self.size
+            halign: "left"
+            valign: "middle"
+            shorten: True
+    IconButton:
+        text: app.glyph("account-check" if root.subscribed else "account-plus")
+        color: app.c_accent if root.subscribed else app.c_muted
+        font_size: sp(22)
+        width: dp(40) if root.mode == "fav" else 0
+        opacity: 1 if root.mode == "fav" else 0
+        disabled: root.mode != "fav"
+        pos_hint: {"center_y": .5}
+        on_release: app.toggle_fav_row_subscription(root.index)
+    IconButton:
+        text: app.glyph("delete-outline")
+        color: app.c_muted
+        font_size: sp(22)
+        width: dp(40) if root.mode == "fav" else 0
+        opacity: 1 if root.mode == "fav" else 0
+        disabled: root.mode != "fav"
+        pos_hint: {"center_y": .5}
+        on_release: app.remove_favorite(root.index)
+
+<ChannelRow>:
+    size_hint_y: None
+    height: dp(60)
+    padding: dp(16), 0, dp(4), 0
+    spacing: dp(14)
+    canvas.before:
+        Color:
+            rgba: app.c_surface2 if self.state == "down" else (0, 0, 0, 0)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    IconLabel:
+        text: app.glyph("subscription")
+        color: app.c_accent
+        size_hint_x: None
+        width: dp(32)
+    Label:
+        text: root.name
+        font_size: sp(15)
+        color: app.c_text
+        text_size: self.size
+        halign: "left"
+        valign: "middle"
+        shorten: True
+    IconButton:
+        text: app.glyph("close")
+        color: app.c_muted
+        font_size: sp(20)
+        pos_hint: {"center_y": .5}
+        on_release: app.unsubscribe_channel(root.index)
+
+# ---------------------------------------------------------------- écran principal
+
+<Root>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: app.insets
+
+        # Barre de recherche
+        BoxLayout:
+            size_hint_y: None
+            height: 0 if app.immersive else dp(64)
+            opacity: 0 if app.immersive else 1
+            disabled: app.immersive
+            padding: dp(12), dp(10), dp(4), dp(10)
+            spacing: dp(4)
+            BoxLayout:
+                padding: dp(14), 0, dp(6), 0
+                spacing: dp(8)
+                canvas.before:
+                    Color:
+                        rgba: app.c_surface2
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [self.height / 2]
+                IconLabel:
+                    text: app.glyph("magnify")
+                    color: app.c_muted
+                    font_size: sp(22)
+                    size_hint_x: None
+                    width: dp(24)
+                TextInput:
+                    id: search
+                    hint_text: "Rechercher sur YouTube"
+                    multiline: False
+                    write_tab: False
+                    font_size: sp(15)
+                    background_color: 0, 0, 0, 0
+                    foreground_color: app.c_text
+                    hint_text_color: app.c_muted
+                    cursor_color: app.c_accent
+                    padding: 0, (self.height - self.line_height) / 2
+                    on_focus: if self.focus: app.show_panel("results")
+                    on_text_validate: app.search(self.text)
+                IconButton:
+                    text: app.glyph("close")
+                    color: app.c_muted
+                    font_size: sp(18)
+                    size: dp(32), dp(32)
+                    pos_hint: {"center_y": .5}
+                    opacity: 1 if search.text else 0
+                    disabled: not search.text
+                    on_release: search.text = ""; app.show_suggestions()
+            IconButton:
+                text: app.glyph("cog")
+                color: app.c_accent if app.panel == "settings" else app.c_text
+                pos_hint: {"center_y": .5}
+                on_release: app.show_panel("settings")
+
+        # Lecteur
+        FloatLayout:
+            id: player_box
+            size_hint_y: None
+            height: ((root.height - app.insets[1] - app.insets[3]) if app.immersive else self.width * 9 / 16) if app.has_video else 0
+            opacity: 1 if app.has_video else 0
+            disabled: not app.has_video
+            VideoView:
+                texture: app.player.texture if app.player else None
+                pos: self.parent.pos
+                size: self.parent.size
+            # Toucher la vidéo : lecture / pause
+            TapArea:
+                pos: self.parent.pos
+                size: self.parent.size
+                on_release: app.player.toggle()
+            Label:
+                text: "Chargement…"
+                font_size: sp(14)
+                color: 1, 1, 1, .85
+                pos_hint: {"center_x": .5, "center_y": .5}
+                size_hint: None, None
+                size: self.texture_size
+                opacity: 1 if (app.video_busy or (app.player and app.player.state == "loading")) and app.has_video else 0
+            OverlayButton:
+                text: app.glyph("play")
+                font_size: sp(40)
+                size: dp(72), dp(72)
+                bg_color: 0, 0, 0, .45
+                pos_hint: {"center_x": .5, "center_y": .5}
+                opacity: 1 if app.player and not app.player.playing and not app.video_busy and app.player.state not in ("loading", "idle") else 0
+                disabled: self.opacity == 0
+                on_release: app.player.play()
+            # Cœur : favoris (contour jaune -> rose plein)
+            OverlayButton:
+                text: app.glyph("heart" if app.is_favorite else "heart-outline")
+                color: app.c_accent if app.is_favorite else app.c_yellow
+                bg_color: 0, 0, 0, .2
+                x: self.parent.x + dp(8)
+                top: self.parent.top - dp(8)
+                on_release: app.toggle_favorite()
+            # Note de musique : audio M4A (noir -> orange pendant -> vert terminé)
+            OverlayButton:
+                text: app.glyph("music-note")
+                color: {"idle": (0, 0, 0, 1), "busy": app.c_orange, "done": app.c_green}[app.audio_state]
+                bg_color: 1, 1, 1, .85
+                right: self.parent.right - dp(8)
+                top: self.parent.top - dp(8)
+                on_release: app.download_audio()
+            # Barre de progression
+            BoxLayout:
+                size_hint: 1, None
+                height: dp(40)
+                pos: self.parent.pos
+                padding: dp(2), 0, dp(2), 0
+                spacing: dp(2)
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, .45
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                IconButton:
+                    text: app.glyph("pause" if app.player and app.player.playing else "play")
+                    color: 1, 1, 1, 1
+                    font_size: sp(26)
+                    size: dp(40), dp(40)
+                    on_release: app.player.toggle()
+                Label:
+                    text: app.fmt_time(app.player.position) if app.player else ""
+                    font_size: sp(12)
+                    color: 1, 1, 1, 1
+                    size_hint_x: None
+                    width: dp(46)
+                SeekBar:
+                    cursor_size: dp(14), dp(14)
+                    value_track: True
+                    value_track_color: app.c_accent
+                    value_track_width: dp(2)
+                    padding: dp(8)
+                Label:
+                    text: app.fmt_time(app.player.duration) if app.player else ""
+                    font_size: sp(12)
+                    color: 1, 1, 1, 1
+                    size_hint_x: None
+                    width: dp(46)
+                IconButton:
+                    text: app.glyph("fullscreen-exit" if app.forced_landscape else "fullscreen")
+                    color: 1, 1, 1, 1
+                    font_size: sp(22)
+                    size: dp(40), dp(40)
+                    on_release: app.toggle_fullscreen()
+
+        # Titre, chaîne, abonnement, playlist
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: dp(92) if app.has_video and not app.immersive else 0
+            opacity: 1 if app.has_video and not app.immersive else 0
+            disabled: not app.has_video or app.immersive
+            padding: dp(14), dp(8), dp(6), dp(6)
+            spacing: dp(4)
+            canvas.before:
+                Color:
+                    rgba: app.c_surface
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Label:
+                text: app.video_title
+                bold: True
+                font_size: sp(15)
+                color: app.c_text
+                text_size: self.size
+                halign: "left"
+                valign: "top"
+                max_lines: 2
+            BoxLayout:
+                size_hint_y: None
+                height: dp(36)
+                spacing: dp(8)
+                Label:
+                    text: app.video_channel
+                    font_size: sp(13)
+                    color: app.c_muted
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+                    shorten: True
+                Pill:
+                    text: "Abonné" if app.subscribed else "S'abonner"
+                    bg_color: app.c_surface2 if app.subscribed else app.c_accent
+                    pos_hint: {"center_y": .5}
+                    on_release: app.toggle_subscription()
+                IconButton:
+                    text: app.glyph("skip-previous")
+                    size: dp(36), dp(36)
+                    pos_hint: {"center_y": .5}
+                    opacity: 1 if app.queue_index > 0 else .25
+                    on_release: app.play_next(-1)
+                IconButton:
+                    text: app.glyph("skip-next")
+                    size: dp(36), dp(36)
+                    pos_hint: {"center_y": .5}
+                    opacity: 1 if 0 <= app.queue_index < len(app.queue) - 1 else .25
+                    on_release: app.play_next(1)
+                IconButton:
+                    text: app.glyph("close")
+                    color: app.c_muted
+                    size: dp(36), dp(36)
+                    pos_hint: {"center_y": .5}
+                    on_release: app.close_video()
+
+        # Contenu : résultats, historique, favoris, chaîne, paramètres
+        ScreenManager:
+            id: sm
+            transition: NoTransition()
+            opacity: 0 if app.immersive else 1
+            disabled: app.immersive
+
+            Screen:
+                name: "results"
+                BoxLayout:
+                    orientation: "vertical"
+                    Label:
+                        text: app.suggest_title
+                        bold: True
+                        font_size: sp(16)
+                        color: app.c_text
+                        padding: dp(16), 0
+                        text_size: self.size
+                        halign: "left"
+                        valign: "middle"
+                        size_hint_y: None
+                        height: dp(40) if app.results_mode == "suggest" and results_rv.data else 0
+                        opacity: 1 if self.height else 0
+                    FloatLayout:
+                        List:
+                            id: results_rv
+                            viewclass: "VideoRow"
+                            pos: self.parent.pos
+                            size: self.parent.size
+                        EmptyLabel:
+                            text: app.message
+                            pos_hint: {"center_x": .5, "center_y": .6}
+
+            Screen:
+                name: "history"
+                BoxLayout:
+                    orientation: "vertical"
+                    PanelHeader:
+                        title: "Historique"
+                        Pill:
+                            text: "Effacer"
+                            pos_hint: {"center_y": .5}
+                            on_release: app.clear_history()
+                    FloatLayout:
+                        List:
+                            id: history_rv
+                            viewclass: "VideoRow"
+                            pos: self.parent.pos
+                            size: self.parent.size
+                        EmptyLabel:
+                            text: "" if history_rv.data else "Aucune vidéo regardée pour l'instant"
+                            pos_hint: {"center_x": .5, "center_y": .6}
+
+            Screen:
+                name: "favorites"
+                BoxLayout:
+                    orientation: "vertical"
+                    PanelHeader:
+                        title: "Favoris"
+                        Pill:
+                            text: "Tout lire"
+                            bg_color: app.c_accent
+                            pos_hint: {"center_y": .5}
+                            opacity: 1 if app.fav_tab == "videos" else 0
+                            disabled: app.fav_tab != "videos"
+                            on_release: app.play_all_favorites()
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(44)
+                        padding: dp(12), dp(4)
+                        spacing: dp(8)
+                        Pill:
+                            text: "Vidéos"
+                            bg_color: app.c_accent if app.fav_tab == "videos" else app.c_surface2
+                            on_release: app.fav_tab = "videos"
+                        Pill:
+                            text: "Chaînes"
+                            bg_color: app.c_accent if app.fav_tab == "channels" else app.c_surface2
+                            on_release: app.fav_tab = "channels"
+                        Widget:
+                    FloatLayout:
+                        List:
+                            id: fav_rv
+                            viewclass: "VideoRow"
+                            pos: self.parent.pos
+                            size: self.parent.size
+                            opacity: 1 if app.fav_tab == "videos" else 0
+                            disabled: app.fav_tab != "videos"
+                        List:
+                            id: chan_rv
+                            viewclass: "ChannelRow"
+                            pos: self.parent.pos
+                            size: self.parent.size
+                            opacity: 1 if app.fav_tab == "channels" else 0
+                            disabled: app.fav_tab != "channels"
+                        EmptyLabel:
+                            text: ("" if fav_rv.data else "Touche le cœur sur une vidéo pour l'ajouter ici") if app.fav_tab == "videos" else ("" if chan_rv.data else "Abonne-toi à une chaîne avec le bouton « S'abonner »")
+                            pos_hint: {"center_x": .5, "center_y": .6}
+
+            Screen:
+                name: "channel"
+                BoxLayout:
+                    orientation: "vertical"
+                    PanelHeader:
+                        title: app.channel_title
+                    FloatLayout:
+                        List:
+                            id: channel_rv
+                            viewclass: "VideoRow"
+                            pos: self.parent.pos
+                            size: self.parent.size
+                        EmptyLabel:
+                            text: "Chargement…" if app.busy and not channel_rv.data else ""
+                            pos_hint: {"center_x": .5, "center_y": .6}
+
+            Screen:
+                name: "settings"
+                BoxLayout:
+                    orientation: "vertical"
+                    PanelHeader:
+                        title: "Paramètres"
+                    ScrollView:
+                        do_scroll_x: False
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            padding: dp(16), dp(8), dp(16), dp(24)
+                            spacing: dp(12)
+                            Label:
+                                text: "Résolution par défaut"
+                                bold: True
+                                font_size: sp(15)
+                                color: app.c_text
+                                size_hint_y: None
+                                height: dp(28)
+                                text_size: self.size
+                                halign: "left"
+                            StackLayout:
+                                id: res_chips
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                            Label:
+                                text: "En arrière-plan ou écran éteint, seul le son est lu (qualité minimale). La résolution choisie revient dès que l'appli repasse au premier plan."
+                                font_size: sp(12)
+                                color: app.c_muted
+                                size_hint_y: None
+                                text_size: self.width, None
+                                height: self.texture_size[1]
+                            BoxLayout:
+                                size_hint_y: None
+                                height: dp(44)
+                                Label:
+                                    text: "Lecture automatique"
+                                    bold: True
+                                    font_size: sp(15)
+                                    color: app.c_text
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                Toggle:
+                                    active: app.autoplay
+                                    pos_hint: {"center_y": .5}
+                                    on_release: app.toggle_autoplay()
+                            Label:
+                                text: "À la fin d'une vidéo, enchaîne sur une vidéo proposée par YouTube."
+                                font_size: sp(12)
+                                color: app.c_muted
+                                size_hint_y: None
+                                text_size: self.width, None
+                                height: self.texture_size[1]
+                            Widget:
+                                size_hint_y: None
+                                height: dp(8)
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                padding: dp(16)
+                                spacing: dp(6)
+                                canvas.before:
+                                    Color:
+                                        rgba: app.c_surface
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [dp(16)]
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(40)
+                                    spacing: dp(10)
+                                    IconLabel:
+                                        text: app.glyph("information-outline")
+                                        color: app.c_accent
+                                        size_hint_x: None
+                                        width: dp(28)
+                                    Label:
+                                        text: "Younegui"
+                                        bold: True
+                                        font_size: sp(20)
+                                        color: app.c_text
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                Label:
+                                    text: "Version %s" % app.version
+                                    font_size: sp(13)
+                                    color: app.c_muted
+                                    size_hint_y: None
+                                    height: dp(20)
+                                    text_size: self.size
+                                    halign: "left"
+                                Label:
+                                    text: "Auteur : %s" % app.author
+                                    font_size: sp(13)
+                                    color: app.c_muted
+                                    size_hint_y: None
+                                    height: dp(20)
+                                    text_size: self.size
+                                    halign: "left"
+                                Label:
+                                    text: app.description
+                                    font_size: sp(13)
+                                    color: app.c_text
+                                    size_hint_y: None
+                                    text_size: self.width, None
+                                    height: self.texture_size[1] + dp(8)
+                                Label:
+                                    text: "Réalisé avec Kivy et yt-dlp."
+                                    font_size: sp(12)
+                                    color: app.c_muted
+                                    size_hint_y: None
+                                    height: dp(20)
+                                    text_size: self.size
+                                    halign: "left"
+
+        # Barre du bas
+        BoxLayout:
+            size_hint_y: None
+            height: 0 if app.immersive else dp(60)
+            opacity: 0 if app.immersive else 1
+            disabled: app.immersive
+            canvas.before:
+                Color:
+                    rgba: app.c_surface
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            BottomItem:
+                icon: app.glyph("history")
+                label: "Historique"
+                active: app.panel == "history"
+                on_release: app.show_panel("history")
+            BottomItem:
+                icon: app.glyph("download")
+                label: "Télécharger"
+                on_release: app.download_video()
+            BottomItem:
+                icon: app.glyph("playlist-play")
+                label: "Favoris"
+                active: app.panel in ("favorites", "channel")
+                on_release: app.show_panel("favorites")
+            BottomItem:
+                icon: app.glyph("power")
+                label: "Quitter"
+                on_release: app.quit_app()
+
+    # Message temporaire
+    Label:
+        id: toast
+        text: app.toast_text
+        opacity: 0
+        font_size: sp(13)
+        color: app.c_text
+        size_hint: None, None
+        text_size: min(root.width - dp(48), dp(420)), None
+        halign: "center"
+        size: self.texture_size[0] + dp(28), self.texture_size[1] + dp(18)
+        pos_hint: {"center_x": .5}
+        y: dp(76) + app.insets[3]
+        canvas.before:
+            Color:
+                rgba: app.c_surface2[0], app.c_surface2[1], app.c_surface2[2], .96 * self.opacity
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(12)]
